@@ -1,0 +1,67 @@
+ros-rolling-data-tamer-msgs (0.9.1-1jammy) jammy; urgency=high
+
+
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Thu, 11 Jan 2024 23:00:00 -0000
+
+ros-rolling-data-tamer-msgs (0.8.0-1jammy) jammy; urgency=high
+
+  * Merge branch 'dev'
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Wed, 29 Nov 2023 23:00:00 -0000
+
+ros-rolling-data-tamer-msgs (0.7.0-1jammy) jammy; urgency=high
+
+
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Mon, 27 Nov 2023 23:00:00 -0000
+
+ros-rolling-data-tamer-msgs (0.6.0-1jammy) jammy; urgency=high
+
+  * works correctly with plotjuggler
+  * fix ROS2 compilation
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Wed, 22 Nov 2023 23:00:00 -0000
+
+ros-rolling-data-tamer-msgs (0.5.0-1jammy) jammy; urgency=high
+
+
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Tue, 21 Nov 2023 23:00:00 -0000
+
+ros-rolling-data-tamer-msgs (0.4.1-1jammy) jammy; urgency=high
+
+
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Mon, 20 Nov 2023 23:00:00 -0000
+
+ros-rolling-data-tamer-msgs (0.4.0-1jammy) jammy; urgency=high
+
+
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Mon, 20 Nov 2023 23:00:00 -0000
+
+ros-rolling-data-tamer-msgs (0.3.0-1jammy) jammy; urgency=high
+
+  * Merge branch 'humble_dev'
+  * more compact schema
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Mon, 13 Nov 2023 23:00:00 -0000
+
+ros-rolling-data-tamer-msgs (0.2.1-1jammy) jammy; urgency=high
+
+
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Sun, 12 Nov 2023 23:00:00 -0000
+
+ros-rolling-data-tamer-msgs (0.2.0-1jammy) jammy; urgency=high
+
+  * Enable ROS2
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Sun, 12 Nov 2023 23:00:00 -0000
+
+
