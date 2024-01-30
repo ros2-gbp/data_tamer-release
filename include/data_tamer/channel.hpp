@@ -131,6 +131,8 @@ public:
    * when calling takeSnapshot.
    *
    * IMPORTANT / DANGER: do NOT resize the vector, once it is registered!
+   * Increasing the size of a vector may cause elements to be reallocated,
+   * and this will create dangling pointers.
    *
    * @param name   name of the vector
    * @param value  pointer to the vectors of values.
@@ -308,11 +310,10 @@ inline void LogChannel::updateTypeRegistry()
       {
         auto func = [this, &fields](const char* field_name, const auto& member) {
           using MemberType = decltype(getPointerType(member));
-          updateTypeRegistryImpl<MemberType>(fields, field_name);
+          this->updateTypeRegistryImpl<MemberType>(fields, field_name);
         };
         TypeDefinition<T>().typeDef(func);
       }
-      // DataTamer::TypeDefinition<T>().typeDef({}, func);
       addCustomType(type_name, fields);
     }
   }
