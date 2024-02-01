@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(data_tamer VERSION 0.9.1)
+project(data_tamer_cpp VERSION 0.9.3)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_STANDARD 17)
 
 if(${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
     option(DATA_TAMER_BUILD_TESTS "Build tests" ON)
@@ -89,8 +90,6 @@ if ( ament_cmake_FOUND )
     ament_package()
 else()
     find_package(mcap REQUIRED)
-    find_package(benchmark QUIET)
-
     target_link_libraries(data_tamer PRIVATE mcap::mcap)
 endif()
 
@@ -138,12 +137,7 @@ endif()
 
 if(DATA_TAMER_BUILD_TESTS)
     include(CTest)
-
-target_sources(Continuous
-  PRIVATE
-    include/data_tamer/custom_types.hpp
-)
-enable_testing()
+    enable_testing() 
     add_subdirectory(tests)
 endif()
 
@@ -151,6 +145,7 @@ if(DATA_TAMER_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
+find_package(benchmark QUIET)
 if(benchmark_FOUND)
     add_subdirectory(benchmarks)
 else()
