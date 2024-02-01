@@ -1,0 +1,116 @@
+ros-humble-data-tamer-cpp (0.9.3-1jammy) jammy; urgency=high
+
+  * add std::hash<DataTamer::RegistrationID>
+  * fix dead-lock
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Wed, 31 Jan 2024 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.9.2-1jammy) jammy; urgency=high
+
+  * fix compilation in ament
+  * Update CMakeLists.txt. Fix #11 <https://github.com/facontidavide/data_tamer/issues/11>
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Mon, 29 Jan 2024 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.9.1-1jammy) jammy; urgency=high
+
+  * add support for enums
+  * renamed folder to data_tamer_cpp
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Thu, 11 Jan 2024 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.8.0-1jammy) jammy; urgency=high
+
+  * API change related to CustomSerializers
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Wed, 29 Nov 2023 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.7.0-1jammy) jammy; urgency=high
+
+  * recursive_mutex and call it a day
+  * add MCAP option
+  * add MCAPSink::stopRecording
+  * add more types to mcap example
+  * add ChannelsRegistry::clear()
+  * extended tests
+  * bug fixes and more tests
+  * fix warning
+  * compute fixed size at compilation time
+  * new wrappying of TypeDefinition
+  * refactoring type registry
+  * major refactoring of custom types
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Mon, 27 Nov 2023 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.6.0-1jammy) jammy; urgency=high
+
+  @ add back compatibility to data_tamer_parser
+  * works correctly with plotjuggler
+  * fix ROS2 compilation
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Wed, 22 Nov 2023 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.5.0-1jammy) jammy; urgency=high
+
+  * preliminary custom type support
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Tue, 21 Nov 2023 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.4.1-1jammy) jammy; urgency=high
+
+
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Mon, 20 Nov 2023 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.4.0-1jammy) jammy; urgency=high
+
+  * add again channel name to hash
+  * bug fixes in schema hash and parsing
+  * add benchmark
+  * readme update
+  * added data_tamer_parser with some samples and testing
+  * add locked reference
+  * bug fixes and tests
+  * refactored API to support containers
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Mon, 20 Nov 2023 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.3.0-1jammy) jammy; urgency=high
+
+  * add coverage
+  * fix bug
+  * add CI
+  * unit test added
+  * allow registering again with new pointer
+  * add docs
+  * use custom mutex on linux
+  * adding ros2 example
+  * ros2 publisher sink
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Mon, 13 Nov 2023 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.2.1-1jammy) jammy; urgency=high
+
+  * fix conan
+  * fix conan
+  * Contributors: Davide Faconti
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Sun, 12 Nov 2023 23:00:00 -0000
+
+ros-humble-data-tamer-cpp (0.2.0-1jammy) jammy; urgency=high
+
+  * First release: supports MCAP sink only
+  * Contributors: Davide Faconti, Henry Moore
+
+ -- Davide Faconti <davide.faconti@gmail.com>  Sun, 12 Nov 2023 23:00:00 -0000
+
+
