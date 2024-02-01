@@ -2,6 +2,18 @@
 Changelog for package data_tamer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.9.3 (2024-02-01)
+------------------
+* add std::hash<DataTamer::RegistrationID>
+* fix dead-lock
+* Contributors: Davide Faconti
+
+0.9.2 (2024-01-30)
+------------------
+* fix compilation in ament
+* Update CMakeLists.txt. Fix `#11 <https://github.com/facontidavide/data_tamer/issues/11>`_
+* Contributors: Davide Faconti
+
 0.9.1 (2024-01-12)
 ------------------
 * add support for enums
