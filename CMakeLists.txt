@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 
-project(data_tamer_cpp VERSION 0.9.2)
+project(data_tamer_cpp VERSION 0.9.3)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -137,12 +137,7 @@ endif()
 
 if(DATA_TAMER_BUILD_TESTS)
     include(CTest)
-
-target_sources(Continuous
-  PRIVATE
-    include/data_tamer/custom_types.hpp
-)
-enable_testing()
+    enable_testing() 
     add_subdirectory(tests)
 endif()
 
