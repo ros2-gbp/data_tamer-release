@@ -2,6 +2,25 @@
 Changelog for package data_tamer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.9.4 (2024-02-02)
+------------------
+* changed the way registerValue throws if you try registering the same address again
+* add unit tests to verify that vectors with changing size are OK
+* change name of the library/target to data_tamer_cpp
+* Contributors: Davide Faconti
+
+0.9.3 (2024-02-01)
+------------------
+* add std::hash<DataTamer::RegistrationID>
+* fix dead-lock
+* Contributors: Davide Faconti
+
+0.9.2 (2024-01-30)
+------------------
+* fix compilation in ament
+* Update CMakeLists.txt. Fix `#11 <https://github.com/facontidavide/data_tamer/issues/11>`_
+* Contributors: Davide Faconti
+
 0.9.1 (2024-01-12)
 ------------------
 * add support for enums
