@@ -54,7 +54,7 @@ public:
    * @param value   new value
    * @param auto_enable  if true and the current instance is disabled, call setEnabled(true)
    */
-  void set(const T& value, bool auto_enable = false);
+  void set(const T& value, bool auto_enable = true);
 
   /// @brief get the stored value.
   [[nodiscard]] T get();
@@ -117,6 +117,9 @@ public:
    * @brief registerValue add a value to be monitored.
    * You must guaranty that the pointer to the value is still valid,
    * when calling takeSnapshot.
+   * If you want to change the pointer T* to a new one,
+   * you must first call unregister(), otherwise this method will throw
+   * an exception.
    *
    * @param name   name of the value
    * @param value  pointer to the value
@@ -129,8 +132,6 @@ public:
    * @brief registerValue add a vectors of values.
    * You must guaranty that the pointer to each value is still valid,
    * when calling takeSnapshot.
-   *
-   * IMPORTANT / DANGER: do NOT resize the vector, once it is registered!
    *
    * @param name   name of the vector
    * @param value  pointer to the vectors of values.
@@ -308,11 +309,10 @@ inline void LogChannel::updateTypeRegistry()
       {
         auto func = [this, &fields](const char* field_name, const auto& member) {
           using MemberType = decltype(getPointerType(member));
-          updateTypeRegistryImpl<MemberType>(fields, field_name);
+          this->updateTypeRegistryImpl<MemberType>(fields, field_name);
         };
         TypeDefinition<T>().typeDef(func);
       }
-      // DataTamer::TypeDefinition<T>().typeDef({}, func);
       addCustomType(type_name, fields);
     }
   }
@@ -414,7 +414,6 @@ inline void LoggedValue<T>::set(const T& val, bool auto_enable)
 {
   if (auto channel = channel_.lock())
   {
-    std::lock_guard const lock(channel->writeMutex());
     value_ = val;
     if (!enabled_ && auto_enable)
     {
@@ -425,10 +424,7 @@ inline void LoggedValue<T>::set(const T& val, bool auto_enable)
   else
   {
     value_ = val;
-    if (!enabled_ && auto_enable)
-    {
-      enabled_ = true;
-    }
+    enabled_ |= auto_enable;
   }
 }
 
