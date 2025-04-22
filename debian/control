@@ -1,0 +1,12 @@
+Source: ros-kilted-data-tamer-cpp
+Section: misc
+Priority: optional
+Maintainer: Davide Faconti <davide.faconti@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), ros-kilted-ament-cmake, ros-kilted-ament-cmake-gtest <!nocheck>, ros-kilted-data-tamer-msgs, ros-kilted-mcap-vendor, ros-kilted-rclcpp, ros-kilted-ros-workspace
+Homepage: 
+Standards-Version: 3.9.2
+
+Package: ros-kilted-data-tamer-cpp
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-kilted-data-tamer-msgs, ros-kilted-mcap-vendor, ros-kilted-rclcpp, ros-kilted-ros-workspace
+Description: DataTamer data logging library
