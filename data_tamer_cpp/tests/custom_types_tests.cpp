@@ -1,4 +1,4 @@
-#include "data_tamer/data_tamer.hpp"
+#include "data_tamer/channel.hpp"
 #include "data_tamer/sinks/dummy_sink.hpp"
 
 #include "../examples/geometry_types.hpp"
@@ -9,36 +9,35 @@
 #include <thread>
 
 using namespace DataTamer;
+using namespace TestTypes;
 
 struct TestType
 {
-  double timestamp;
-  int count;
+  double timestamp = 0;
+  int count = 0;
   std::vector<Point3D> positions;
   std::array<Pose, 3> poses;
 
-  enum Color: uint8_t { RED, GREEN, BLUE };
-  Color color;
-};
-
-
-namespace DataTamer
-{
-template <> struct TypeDefinition<TestType>
-{
-  std::string typeName() const { return "TestType"; }
-
-  template <class Function> void typeDef(const TestType& obj, Function& addField)
+  enum Color : uint8_t
   {
-    addField("timestamp", &obj.timestamp);
-    addField("count", &obj.count);
-    addField("positions", &obj.positions);
-    addField("poses", &obj.poses);
-    addField("color", &obj.color);
-  }
+    RED,
+    GREEN,
+    BLUE,
+    UNDEFINED
+  };
+  Color color = UNDEFINED;
 };
 
-} // namespace DataTamer
+template <typename AddField>
+std::string_view TypeDefinition(TestType& obj, AddField& add)
+{
+  add("timestamp", &obj.timestamp);
+  add("count", &obj.count);
+  add("positions", &obj.positions);
+  add("poses", &obj.poses);
+  add("color", &obj.color);
+  return "TestType";
+}
 
 TEST(DataTamerCustom, Registration)
 {
@@ -68,7 +67,7 @@ TEST(DataTamerCustom, CustomType1)
   auto sink = std::make_shared<DummySink>();
   channel->addDataSink(sink);
 
-  Pose pose = {{1, 2, 3}, {4, 5, 6, 7}};
+  Pose pose = { { 1, 2, 3 }, { 4, 5, 6, 7 } };
   channel->registerValue("pose", &pose);
 
   TestType my_test;
@@ -78,11 +77,8 @@ TEST(DataTamerCustom, CustomType1)
   channel->takeSnapshot();
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-  auto expected_size = sizeof(Pose) +
-                       sizeof(double) +
-                       sizeof(int32_t) +
-                       sizeof(uint32_t) + 4 * sizeof(Point3D) +
-                       sizeof(TestType::Color) +
+  auto expected_size = sizeof(Pose) + sizeof(double) + sizeof(int32_t) +
+                       sizeof(uint32_t) + 4 * sizeof(Point3D) + sizeof(TestType::Color) +
                        3 * sizeof(Pose);
 
   ASSERT_EQ(sink->latest_snapshot.payload.size(), expected_size);
@@ -138,7 +134,6 @@ TEST(DataTamerCustom, CustomType1)
   ASSERT_LT(posA, posE);
 }
 
-
 TEST(DataTamerCustom, CustomType2)
 {
   auto channel = LogChannel::create("chan");
@@ -154,8 +149,7 @@ TEST(DataTamerCustom, CustomType2)
   channel->takeSnapshot();
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-  auto expected_size = 2 * sizeof(Point3D) +
-                       3 * sizeof(Quaternion) + sizeof(uint32_t);
+  auto expected_size = 2 * sizeof(Point3D) + 3 * sizeof(Quaternion) + sizeof(uint32_t);
 
   //-------------------------------------------------
   const auto schema = channel->getSchema();
@@ -196,10 +190,9 @@ struct Pos2D
   int32_t y;
 };
 
-class Pos2D_Serializer: public CustomSerializer
+class Pos2D_Serializer : public CustomSerializer
 {
 public:
-
   ~Pos2D_Serializer() override = default;
 
   const std::string& typeName() const override
@@ -210,18 +203,12 @@ public:
 
   std::optional<CustomSchema> typeSchema() const override
   {
-    return CustomSchema{"ros1", "int32 x\nint32 y"};
+    return CustomSchema{ "ros1", "int32 x\nint32 y" };
   }
 
-  size_t serializedSize(const void*) const override
-  {
-    return sizeof(Pos2D);
-  }
+  size_t serializedSize(const void*) const override { return sizeof(Pos2D); }
 
-  bool isFixedSize() const override
-  {
-    return true;
-  }
+  bool isFixedSize() const override { return true; }
 
   void serialize(const void* src, SerializeMe::SpanBytes& buffer) const override
   {
@@ -239,14 +226,14 @@ TEST(DataTamerCustom, CustomType3)
 
   auto serializer = std::make_shared<Pos2D_Serializer>();
 
-  Pos2D v1 = {1, 2};
+  Pos2D v1 = { 1, 2 };
   std::vector<Pos2D> v2(2);
-  v2[0] = {3, 4};
-  v2[1] = {5, 6};
+  v2[0] = { 3, 4 };
+  v2[1] = { 5, 6 };
   std::array<Pos2D, 3> v3;
-  v3[0] = {7, 8};
-  v3[1] = {9, 10};
-  v3[2] = {11, 12};
+  v3[0] = { 7, 8 };
+  v3[1] = { 9, 10 };
+  v3[2] = { 11, 12 };
 
   channel->registerCustomValue("v1", &v1, serializer);
   channel->registerCustomValue("v2", &v2, serializer);
@@ -282,39 +269,38 @@ TEST(DataTamerCustom, CustomType3)
   ASSERT_LT(posA, posB);
 }
 
-
 TEST(DataTamerCustom, RegisterConstMethods)
 {
-   auto channel = LogChannel::create("chan");
-    auto sink = std::make_shared<DummySink>();
-    channel->addDataSink(sink);
+  auto channel = LogChannel::create("chan");
+  auto sink = std::make_shared<DummySink>();
+  channel->addDataSink(sink);
 
-    Vector2d vect = {1, 2};
-    channel->registerValue("vect", &vect);
+  PseudoEigen::Vector2d vect = { 1, 2 };
+  channel->registerValue("vect", &vect);
 
-    channel->takeSnapshot();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  channel->takeSnapshot();
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-    const auto expected_size = 2 * sizeof(double);
+  const auto expected_size = 2 * sizeof(double);
 
-    // //-------------------------------------------------
-    const auto schema = channel->getSchema();
-    const std::string schema_txt = ToStr(schema);
+  // //-------------------------------------------------
+  const auto schema = channel->getSchema();
+  const std::string schema_txt = ToStr(schema);
 
-    std::cout << schema_txt << std::endl;
+  std::cout << schema_txt << std::endl;
 
-    ASSERT_EQ(sink->latest_snapshot.payload.size(), expected_size);
-    ASSERT_EQ(schema.custom_types.size(), 1);
-    ASSERT_EQ(schema.custom_schemas.size(), 0);
+  ASSERT_EQ(sink->latest_snapshot.payload.size(), expected_size);
+  ASSERT_EQ(schema.custom_types.size(), 1);
+  ASSERT_EQ(schema.custom_schemas.size(), 0);
 
-    const auto posA = schema_txt.find("Vector2d vect\n");
+  const auto posA = schema_txt.find("Vector2d vect\n");
 
-    const auto posB = schema_txt.find("===============\n"
-                                      "MSG: Vector2d\n"
-                                      "float64 x\n"
-                                      "float64 y\n");
+  const auto posB = schema_txt.find("===============\n"
+                                    "MSG: Vector2d\n"
+                                    "float64 x\n"
+                                    "float64 y\n");
 
-    ASSERT_TRUE(std::string::npos != posA);
-    ASSERT_TRUE(std::string::npos != posB);
-    ASSERT_LT(posA, posB);
+  ASSERT_TRUE(std::string::npos != posA);
+  ASSERT_TRUE(std::string::npos != posB);
+  ASSERT_LT(posA, posB);
 }
