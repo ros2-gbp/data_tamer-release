@@ -19,7 +19,7 @@ namespace DataTamerParser
 
 constexpr int SCHEMA_VERSION = 4;
 
-enum class BasicType
+enum class BasicType: uint8_t
 {
   BOOL,
   CHAR,
@@ -86,8 +86,6 @@ struct Schema
   std::map<std::string, FieldsVector> custom_types;
 };
 
-Schema BuilSchemaFromText(const std::string& txt);
-
 struct SnapshotView
 {
   /// Unique identifier of the schema
@@ -132,7 +130,7 @@ inline T Deserialize(BufferSpan& buffer)
   const auto N = sizeof(T);
   std::memcpy(&var, buffer.data, N);
   buffer.data += N;
-  if (N > buffer.size)
+  if(N > buffer.size)
   {
     throw std::runtime_error("Buffer overflow");
   }
@@ -142,7 +140,7 @@ inline T Deserialize(BufferSpan& buffer)
 
 inline VarNumber DeserializeToVarNumber(BasicType type, BufferSpan& buffer)
 {
-  switch (type)
+  switch(type)
   {
     case BasicType::BOOL:
       return Deserialize<bool>(buffer);
@@ -190,7 +188,7 @@ inline bool GetBit(BufferSpan mask, size_t index)
 {
   // https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
   const std::hash<std::string> str_hasher;
-  const std::hash<BasicType> type_hasher;
+  const std::hash<uint8_t> type_hasher;
   const std::hash<bool> bool_hasher;
   const std::hash<uint32_t> uint_hasher;
 
@@ -199,8 +197,8 @@ inline bool GetBit(BufferSpan mask, size_t index)
   };
 
   combine(str_hasher, field.field_name);
-  combine(type_hasher, field.type);
-  if (field.type == BasicType::OTHER)
+  combine(type_hasher, static_cast<uint8_t>(field.type));
+  if(field.type == BasicType::OTHER)
   {
     combine(str_hasher, field.type_name);
   }
@@ -216,14 +214,14 @@ bool TypeField::operator==(const TypeField& other) const
          type_name == other.type_name;
 }
 
-inline Schema BuilSchemaFromText(const std::string& txt)
+inline Schema BuilSchemaFromText(const std::string& txt, bool check_hash = false)
 {
   auto trimString = [](std::string& str) {
-    while (!str.empty() && (str.back() == ' ' || str.back() == '\r'))
+    while(!str.empty() && (str.back() == ' ' || str.back() == '\r'))
     {
       str.pop_back();
     }
-    while (!str.empty() && (str.front() == ' ' || str.front() == '\r'))
+    while(!str.empty() && (str.front() == ' ' || str.front() == '\r'))
     {
       str.erase(0, 1);
     }
@@ -236,19 +234,19 @@ inline Schema BuilSchemaFromText(const std::string& txt)
 
   std::vector<TypeField>* field_vector = &schema.fields;
 
-  while (std::getline(ss, line))
+  while(std::getline(ss, line))
   {
     trimString(line);
-    if (line.empty())
+    if(line.empty())
     {
       continue;
     }
-    if (line.find("==============================") != std::string::npos)
+    if(line.find("==============================") != std::string::npos)
     {
       // get "MSG:" in the next line
       std::getline(ss, line);
       auto msg_pos = line.find("MSG: ");
-      if (msg_pos == std::string::npos)
+      if(msg_pos == std::string::npos)
       {
         throw std::runtime_error("Expecting \"MSG: \" at the beginning of line: " + line);
       }
@@ -260,11 +258,11 @@ inline Schema BuilSchemaFromText(const std::string& txt)
 
     // a single space is expected
     auto space_pos = line.find(' ');
-    if (space_pos == std::string::npos)
+    if(space_pos == std::string::npos)
     {
       throw std::runtime_error("Unexpected line: " + line);
     }
-    if (line.find("### ") == 0)
+    if(line.find("### ") == 0)
     {
       space_pos = line.find(' ', 5);
     }
@@ -277,23 +275,23 @@ inline Schema BuilSchemaFromText(const std::string& txt)
     const std::string* str_type = &str_left;
     const std::string* str_name = &str_right;
 
-    if (str_left == "### version:")
+    if(str_left == "### version:")
     {
       // check compatibility
-      if (std::stoi(str_right) != SCHEMA_VERSION)
+      if(std::stoi(str_right) != SCHEMA_VERSION)
       {
         throw std::runtime_error("Wrong SCHEMA_VERSION");
       }
       continue;
     }
-    if (str_left == "### hash:")
+    if(str_left == "### hash:")
     {
       // check compatibility
       declared_schema = std::stoul(str_right);
       continue;
     }
 
-    if (str_left == "### channel_name:")
+    if(str_left == "### channel_name:")
     {
       // check compatibility
       schema.channel_name = str_right;
@@ -304,21 +302,23 @@ inline Schema BuilSchemaFromText(const std::string& txt)
     TypeField field;
 
     static const std::array<std::string, TypesCount> kNamesNew = {
-        "bool",   "char",  "int8",   "uint8",   "int16",   "uint16", "int32",
-        "uint32", "int64", "uint64", "float32", "float64", "other"};
+      "bool",   "char",  "int8",   "uint8",   "int16",   "uint16", "int32",
+      "uint32", "int64", "uint64", "float32", "float64", "other"
+    };
     // backcompatibility to old format
     static const std::array<std::string, TypesCount> kNamesOld = {
-        "BOOL",   "CHAR",  "INT8",   "UINT8", "INT16",  "UINT16", "INT32",
-        "UINT32", "INT64", "UINT64", "FLOAT", "DOUBLE", "OTHER"};
+      "BOOL",   "CHAR",  "INT8",   "UINT8", "INT16",  "UINT16", "INT32",
+      "UINT32", "INT64", "UINT64", "FLOAT", "DOUBLE", "OTHER"
+    };
 
-    for (size_t i = 0; i < TypesCount; i++)
+    for(size_t i = 0; i < TypesCount; i++)
     {
-      if (str_left.find(kNamesNew[i]) == 0)
+      if(str_left.find(kNamesNew[i]) == 0)
       {
         field.type = static_cast<BasicType>(i);
         break;
       }
-      if (str_right.find(kNamesOld[i]) == 0)
+      if(str_right.find(kNamesOld[i]) == 0)
       {
         field.type = static_cast<BasicType>(i);
         std::swap(str_type, str_name);
@@ -327,7 +327,7 @@ inline Schema BuilSchemaFromText(const std::string& txt)
     }
 
     auto offset = str_type->find_first_of(" [");
-    if (field.type != BasicType::OTHER)
+    if(field.type != BasicType::OTHER)
     {
       field.type_name = kNamesNew[static_cast<size_t>(field.type)];
     }
@@ -336,11 +336,11 @@ inline Schema BuilSchemaFromText(const std::string& txt)
       field.type_name = str_type->substr(0, offset);
     }
 
-    if (offset != std::string::npos && str_type->at(offset) == '[')
+    if(offset != std::string::npos && str_type->at(offset) == '[')
     {
       field.is_vector = true;
       auto pos = str_type->find(']', offset);
-      if (pos != offset + 1)
+      if(pos != offset + 1)
       {
         // get number
         std::string number_string = line.substr(offset + 1, pos - offset - 1);
@@ -352,14 +352,14 @@ inline Schema BuilSchemaFromText(const std::string& txt)
     trimString(field.field_name);
 
     // update the hash
-    if (field_vector == &schema.fields)
+    if(field_vector == &schema.fields)
     {
       schema.hash = AddFieldToHash(field, schema.hash);
     }
 
     field_vector->push_back(field);
   }
-  if (declared_schema != 0 && declared_schema != schema.hash)
+  if(check_hash && declared_schema != 0 && declared_schema != schema.hash)
   {
     throw std::runtime_error("Error in hash calculation");
   }
@@ -373,7 +373,7 @@ bool ParseSnapshotRecursive(const TypeField& field,
                             const std::string& prefix)
 {
   [[maybe_unused]] uint32_t vect_size = field.array_size;
-  if (field.is_vector && field.array_size == 0)
+  if(field.is_vector && field.array_size == 0)
   {
     // dynamic vector
     vect_size = Deserialize<uint32_t>(buffer);
@@ -383,7 +383,7 @@ bool ParseSnapshotRecursive(const TypeField& field,
       (prefix.empty()) ? field.field_name : (prefix + "/" + field.field_name);
 
   auto doParse = [&](const std::string& var_name) {
-    if (field.type != BasicType::OTHER)
+    if(field.type != BasicType::OTHER)
     {
       const auto var = DeserializeToVarNumber(field.type, buffer);
       callback_number(var_name, var);
@@ -391,20 +391,20 @@ bool ParseSnapshotRecursive(const TypeField& field,
     else
     {
       const FieldsVector& fields = types_list.at(field.type_name);
-      for (const auto& sub_field : fields)
+      for(const auto& sub_field : fields)
       {
         ParseSnapshotRecursive(sub_field, types_list, buffer, callback_number, var_name);
       }
     }
   };
 
-  if (!field.is_vector)
+  if(!field.is_vector)
   {
     doParse(new_prefix);
   }
   else
   {
-    for (uint32_t a = 0; a < vect_size; a++)
+    for(uint32_t a = 0; a < vect_size; a++)
     {
       const auto& name = new_prefix + "[" + std::to_string(a) + "]";
       doParse(name);
@@ -418,16 +418,16 @@ inline bool ParseSnapshot(const Schema& schema, SnapshotView snapshot,
                           const NumberCallback& callback_number,
                           const CustomCallback& callback_custom)
 {
-  if (schema.hash != snapshot.schema_hash)
+  if(schema.hash != snapshot.schema_hash)
   {
     return false;
   }
   BufferSpan buffer = snapshot.payload;
 
-  for (size_t i = 0; i < schema.fields.size(); i++)
+  for(size_t i = 0; i < schema.fields.size(); i++)
   {
     const auto& field = schema.fields[i];
-    if (GetBit(snapshot.active_mask, i))
+    if(GetBit(snapshot.active_mask, i))
     {
       ParseSnapshotRecursive(field, schema.custom_types, buffer, callback_number, "");
     }
@@ -435,4 +435,4 @@ inline bool ParseSnapshot(const Schema& schema, SnapshotView snapshot,
   return true;
 }
 
-}   // namespace DataTamerParser
+}  // namespace DataTamerParser
