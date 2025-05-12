@@ -2,8 +2,7 @@
 
 #include "data_tamer/values.hpp"
 #include "data_tamer/data_sink.hpp"
-#include "data_tamer/details/mutex.hpp"
-#include "data_tamer/details/locked_reference.hpp"
+#include "data_tamer/logged_value.hpp"
 
 #include <chrono>
 #include <memory>
@@ -21,57 +20,6 @@ inline std::chrono::nanoseconds NsecSinceEpoch()
 class DataSinkBase;
 class LogChannel;
 class ChannelsRegistry;
-
-/**
- * @brief The LoggedValue class is a container of a variable that
- * automatically register/unregister to a Channel when created/destroyed.
- *
- * Setting and getting values is thread-safe.
- */
-template <typename T>
-class LoggedValue
-{
-protected:
-  LoggedValue(const std::shared_ptr<LogChannel>& channel, const std::string& name,
-              T initial_value);
-
-  friend LogChannel;
-
-public:
-  LoggedValue() {}
-
-  ~LoggedValue();
-
-  LoggedValue(LoggedValue const& other) = delete;
-  LoggedValue& operator=(LoggedValue const& other) = delete;
-
-  LoggedValue(LoggedValue&& other) = default;
-  LoggedValue& operator=(LoggedValue&& other) = default;
-
-  /**
-   * @brief set the value of the variable.
-   *
-   * @param value   new value
-   * @param auto_enable  if true and the current instance is disabled, call setEnabled(true)
-   */
-  void set(const T& value, bool auto_enable = true);
-
-  /// @brief get the stored value.
-  [[nodiscard]] T get();
-
-  [[nodiscard]] LockedRef<T, Mutex> getLockedReference();
-
-  /// @brief Disabling a LoggedValue means that we will not record it in the snapshot
-  void setEnabled(bool enabled);
-
-  [[nodiscard]] bool isEnabled() const { return enabled_; }
-
-private:
-  std::weak_ptr<LogChannel> channel_;
-  T value_ = {};
-  RegistrationID id_;
-  bool enabled_ = true;
-};
 
 //---------------------------------------------------------
 
@@ -258,6 +206,7 @@ private:
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
 //----------------------------------------------------------------------
+
 template <typename T>
 void LogChannel::updateTypeRegistryImpl(FieldsVector& fields, const char* field_name)
 {
@@ -266,11 +215,11 @@ void LogChannel::updateTypeRegistryImpl(FieldsVector& fields, const char* field_
   field.field_name = field_name;
   field.type = GetBasicType<T>();
 
-  if constexpr (GetBasicType<T>() == BasicType::OTHER)
+  if constexpr(GetBasicType<T>() == BasicType::OTHER)
   {
-    field.type_name = TypeDefinition<T>().typeName();
+    field.type_name = CustomTypeName<T>::get();
 
-    if constexpr (container_info<T>::is_container)
+    if constexpr(container_info<T>::is_container)
     {
       field.is_vector = true;
       field.array_size = container_info<T>::size;
@@ -288,33 +237,25 @@ void LogChannel::updateTypeRegistryImpl(FieldsVector& fields, const char* field_
 template <typename T>
 inline void LogChannel::updateTypeRegistry()
 {
-  FieldsVector fields;
+  if constexpr(IsNumericType<T>())
+  {
+    return;
+  }
+  using namespace SerializeMe;
+  static_assert(has_TypeDefinition<T>(), "Missing TypeDefinition");
 
-  if constexpr (!IsNumericType<T>())
-  {   
-    const auto& type_name = DataTamer::TypeDefinition<T>().typeName();
-    auto added_serializer = _type_registry.addType<T>(type_name, true);
-    if (added_serializer)
-    {
-      if constexpr (has_typedef_with_object<T>())
-      {
-        auto func = [this, &fields](const char* field_name, const auto* member) {
-          using MemberType =
-              typename std::remove_cv_t<std::remove_reference_t<decltype(*member)>>;
-          updateTypeRegistryImpl<MemberType>(fields, field_name);
-        };
-        TypeDefinition<T>().typeDef({}, func);
-      }
-      else
-      {
-        auto func = [this, &fields](const char* field_name, const auto& member) {
-          using MemberType = decltype(getPointerType(member));
-          this->updateTypeRegistryImpl<MemberType>(fields, field_name);
-        };
-        TypeDefinition<T>().typeDef(func);
-      }
-      addCustomType(type_name, fields);
-    }
+  FieldsVector fields;
+  const std::string type_name(CustomTypeName<T>::get());
+  if(auto added_serializer = _type_registry.addType<T>(type_name, true))
+  {
+    auto func = [this, &fields](const char* field_name, const auto* member) {
+      using MemberType =
+          typename std::remove_cv_t<std::remove_reference_t<decltype(*member)>>;
+      updateTypeRegistryImpl<MemberType>(fields, field_name);
+    };
+    T dummy;
+    TypeDefinition(dummy, func);
+    addCustomType(type_name, fields);
   }
 }
 
@@ -322,7 +263,10 @@ template <typename T>
 inline RegistrationID LogChannel::registerValue(const std::string& name,
                                                 const T* value_ptr)
 {
-  if constexpr (IsNumericType<T>())
+  using namespace SerializeMe;
+  static_assert(has_TypeDefinition<T>() || IsNumericType<T>(), "Missing TypeDefinition");
+
+  if constexpr(IsNumericType<T>())
   {
     return registerValueImpl(name, ValuePtr(value_ptr), {});
   }
@@ -348,7 +292,7 @@ template <template <class, class> class Container, class T, class... TArgs>
 inline RegistrationID LogChannel::registerValue(const std::string& prefix,
                                                 const Container<T, TArgs...>* vect)
 {
-  if constexpr (IsNumericType<T>())
+  if constexpr(IsNumericType<T>())
   {
     return registerValueImpl(prefix, ValuePtr(vect), {});
   }
@@ -364,7 +308,7 @@ template <typename T, size_t N>
 inline RegistrationID LogChannel::registerValue(const std::string& prefix,
                                                 const std::array<T, N>* vect)
 {
-  if constexpr (IsNumericType<T>())
+  if constexpr(IsNumericType<T>())
   {
     return registerValueImpl(prefix, ValuePtr(vect), {});
   }
@@ -386,14 +330,14 @@ LogChannel::createLoggedValue(std::string const& name, T initial_value)
 
 template <typename T>
 inline LoggedValue<T>::LoggedValue(const std::shared_ptr<LogChannel>& channel,
-                                   const std::string& name, T initial_value) :
-  channel_(channel), value_(initial_value), id_(channel->registerValue(name, &value_))
+                                   const std::string& name, T initial_value)
+  : channel_(channel), value_(initial_value), id_(channel->registerValue(name, &value_))
 {}
 
 template <typename T>
 inline LoggedValue<T>::~LoggedValue()
 {
-  if (auto channel = channel_.lock())
+  if(auto channel = channel_.lock())
   {
     channel->unregister(id_);
   }
@@ -402,7 +346,9 @@ inline LoggedValue<T>::~LoggedValue()
 template <typename T>
 inline void LoggedValue<T>::setEnabled(bool enabled)
 {
-  if (auto channel = channel_.lock())
+  // lock the shared mutex in "write" mode
+  std::lock_guard lk(rw_mutex_);
+  if(auto channel = channel_.lock())
   {
     channel->setEnabled(id_, enabled);
   }
@@ -412,10 +358,12 @@ inline void LoggedValue<T>::setEnabled(bool enabled)
 template <typename T>
 inline void LoggedValue<T>::set(const T& val, bool auto_enable)
 {
-  if (auto channel = channel_.lock())
+  // lock the shared mutex in "write" mode
+  std::lock_guard lk(rw_mutex_);
+  if(auto channel = channel_.lock())
   {
     value_ = val;
-    if (!enabled_ && auto_enable)
+    if(!enabled_ && auto_enable)
     {
       channel->setEnabled(id_, true);
       enabled_ = true;
@@ -431,23 +379,31 @@ inline void LoggedValue<T>::set(const T& val, bool auto_enable)
 template <typename T>
 inline T LoggedValue<T>::get()
 {
-  if (auto channel = channel_.lock())
-  {
-    std::lock_guard const lock(channel->writeMutex());
-    return value_;
-  }
-  return value_;
+  // lock the shared mutex in "read" mode
+  rw_mutex_.lock_shared();
+  T tmp = value_;
+  rw_mutex_.unlock_shared();
+  return tmp;
 }
 
 template <typename T>
-inline LockedRef<T, Mutex> LoggedValue<T>::getLockedReference()
+inline MutablePtr<T> LoggedValue<T>::getMutablePtr()
 {
-  Mutex* mutex_ptr = nullptr;
-  if (auto chan = channel_.lock())
+  if(auto channel = channel_.lock())
   {
-    mutex_ptr = &chan->writeMutex();
+    return MutablePtr<T>(&value_, &channel->writeMutex());
   }
-  return LockedRef<T, Mutex>(&value_, mutex_ptr);
+  return MutablePtr<T>(&value_, nullptr);
 }
 
-}   // namespace DataTamer
+template <typename T>
+inline ConstPtr<T> LoggedValue<T>::getConstPtr()
+{
+  if(auto channel = channel_.lock())
+  {
+    return ConstPtr<T>(&value_, &channel->writeMutex());
+  }
+  return ConstPtr<T>(&value_, nullptr);
+}
+
+}  // namespace DataTamer
