@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(data_tamer_cpp VERSION 0.9.4)
+project(data_tamer_cpp VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -14,34 +14,46 @@ else()
     option(DATA_TAMER_BUILD_EXAMPLES "Build examples" OFF)
 endif()
 
-option(BUILD_SHARED_LIBS "Build using shared libraries" ON)
+option(BUILD_SHARED_LIBS "Build using shared libraries" OFF)
 
-if (MSVC)
-    add_compile_options(/W4 /WX)
+# optionally build for ROS 2
+option(DATA_TAMER_BUILD_ROS "Build for ROS 2" ON)
+if (DATA_TAMER_BUILD_ROS)
+    find_package(ament_cmake QUIET)
+    if (NOT ament_cmake_FOUND)
+        set(DATA_TAMER_BUILD_ROS FALSE)
+        message(WARNING "ament_cmake not found, building without ROS 2 support. Set DATA_TAMER_BUILD_ROS to false to disable this warning.")
+    endif()
+endif()
+
+###########################################
+# check if mcap can be found. If true,
+# probably we used conan. If false, build from 3rdparty
+find_package(mcap QUIET)
+if(NOT mcap_FOUND AND NOT DATA_TAMER_BUILD_ROS)
+    set(USE_VENDORED_MCAP ON)
+    message(STATUS "MCAP from 3rdparty")
+    add_subdirectory(3rdparty/mcap)
+    set(mcap_LIBRARY mcap_lib)
 else()
-    add_compile_options(-Wall -Wcast-align -Wconversion -Wdouble-promotion -Wextra -Wimplicit-fallthrough
-        -Wno-deprecated-declarations -Wno-ignored-attributes -Wno-unused-parameter
-        -Wnon-virtual-dtor -Wno-unused-variable -Wnull-dereference -Wold-style-cast
-        -Woverloaded-virtual -Wshadow -Wsign-conversion
-        -Werror -Wpedantic)
+    message(STATUS "MCAP provided by conan (?)")
+    set(mcap_LIBRARY mcap::mcap)
+endif()
+###########################################
+
+
+if (DATA_TAMER_BUILD_ROS)
+    set(ROS2_SINK src/sinks/ros2_publisher_sink.cpp)
 endif()
 
-
-find_package(ament_cmake QUIET)
-
-if ( ament_cmake_FOUND )
-    set(ROS2_SINK 
-        src/sinks/ros2_publisher_sink.cpp)
-endif()
-
-if(BUILD_SHARED_LIBS OR ament_cmake_FOUND)
+if(BUILD_SHARED_LIBS OR DATA_TAMER_BUILD_ROS)
     set(LIB_TYPE SHARED)
 else()
     set(LIB_TYPE STATIC)
 endif()
 
-if(ament_cmake_FOUND AND NOT BUILD_SHARED_LIBS)
-    message("BUILD_SHARED_LIBS forced to ON (i.e. SHARED) in ROS2")
+if(DATA_TAMER_BUILD_ROS AND NOT BUILD_SHARED_LIBS)
+    message("BUILD_SHARED_LIBS forced to ON (i.e. SHARED) in ROS2. Set BUILD_SHARED_LIBS to true to disable this warning when building with ROS.")
 endif()
 
 add_library(data_tamer ${LIB_TYPE}
@@ -60,8 +72,16 @@ add_library(data_tamer ${LIB_TYPE}
 
     src/sinks/mcap_sink.cpp
     ${ROS2_SINK}
-    include/data_tamer/details/mutex.hpp
+
+    include/data_tamer/logged_value.hpp
 )
+
+
+if (MSVC)
+    target_compile_options(data_tamer PRIVATE /W4 /WX)
+else()
+    target_compile_options(data_tamer PRIVATE -Wall -Wconversion -Wextra -Wsign-conversion -Werror -Wpedantic -Wno-sign-conversion)
+endif()
 
 target_compile_features(data_tamer PUBLIC cxx_std_17)
 target_include_directories(data_tamer
@@ -73,21 +93,28 @@ target_include_directories(data_tamer
 )
 target_compile_definitions(data_tamer PUBLIC -DDATA_TAMER_VERSION="${CMAKE_PROJECT_VERSION}")
 
-# detect if compiling in ROS2
-find_package(ament_cmake QUIET)
-if ( ament_cmake_FOUND )
+set(INSTALL_TARGETS data_tamer)
+
+if (DATA_TAMER_BUILD_ROS)
+    message(STATUS "Compiling for ROS2")
     target_compile_definitions(data_tamer PUBLIC USING_ROS2=1 )
-    set(COMPILING_FOR_ROS2 true)
 
     find_package(mcap_vendor REQUIRED)
     find_package(rclcpp REQUIRED)
+    find_package(rclcpp_lifecycle REQUIRED)
     find_package(data_tamer_msgs REQUIRED)
 
-    ament_target_dependencies(data_tamer mcap_vendor rclcpp data_tamer_msgs)
+    ament_target_dependencies(data_tamer mcap_vendor rclcpp rclcpp_lifecycle data_tamer_msgs)
 
     ament_export_targets(data_tamerTargets HAS_LIBRARY_TARGET)
-    ament_export_dependencies(mcap_vendor rclcpp data_tamer_msgs)
+    ament_export_dependencies(mcap_vendor rclcpp rclcpp_lifecycle data_tamer_msgs)
     ament_package()
+
+elseif( USE_VENDORED_MCAP )
+    target_include_directories(data_tamer PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mcap/include> )
+    target_link_libraries(data_tamer PRIVATE mcap_lib)
+    list(APPEND INSTALL_TARGETS mcap_lib)
 else()
     find_package(mcap REQUIRED)
     target_link_libraries(data_tamer PRIVATE mcap::mcap)
@@ -98,15 +125,17 @@ install(
   DESTINATION include
 )
 
+
 install(
-  TARGETS data_tamer
+  TARGETS ${INSTALL_TARGETS}
   EXPORT data_tamerTargets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
 )
 
-if (NOT ament_cmake_FOUND )
+if (NOT DATA_TAMER_BUILD_ROS)
 
     set(LIBRARY_INSTALL_DIR lib)
     set(INCLUDE_INSTALL_DIR include)
@@ -137,7 +166,7 @@ endif()
 
 if(DATA_TAMER_BUILD_TESTS)
     include(CTest)
-    enable_testing() 
+    enable_testing()
     add_subdirectory(tests)
 endif()
 
@@ -151,4 +180,3 @@ if(benchmark_FOUND)
 else()
     message("Google Benchmark library not found")
 endif()
-

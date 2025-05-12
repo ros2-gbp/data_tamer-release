@@ -1,7 +1,7 @@
 /**
  * MIT License
  *
- * Copyright (c) 2019-2023 Davide Faconti
+ * Copyright (c) 2019-2024 Davide Faconti
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -135,7 +135,7 @@ inline size_t Span<T>::size() const
 template <typename T>
 inline void Span<T>::trimFront(size_t offset)
 {
-  if (offset > size_)
+  if(offset > size_)
   {
     throw std::runtime_error("Buffer overrun");
   }
@@ -147,15 +147,15 @@ inline void Span<T>::trimFront(size_t offset)
 // the common platforms).
 #if defined(__s390x__)
 #define SERIALIZE_LITTLEENDIAN 0
-#endif   // __s390x__
+#endif  // __s390x__
 #if !defined(SERIALIZE_LITTLEENDIAN)
 #if defined(__GNUC__) || defined(__clang__) || defined(__ICCARM__)
-#if (defined(__BIG_ENDIAN__) ||                                                          \
-     (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))
+#if(defined(__BIG_ENDIAN__) ||                                                           \
+    (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))
 #define SERIALIZE_LITTLEENDIAN 0
 #else
 #define SERIALIZE_LITTLEENDIAN 1
-#endif   // __BIG_ENDIAN__
+#endif  // __BIG_ENDIAN__
 #elif defined(_MSC_VER)
 #if defined(_M_PPC)
 #define SERIALIZE_LITTLEENDIAN 0
@@ -165,7 +165,7 @@ inline void Span<T>::trimFront(size_t offset)
 #else
 #error Unable to determine endianness, define SERIALIZE_LITTLEENDIAN.
 #endif
-#endif   // !defined(SERIALIZE_LITTLEENDIAN)
+#endif  // !defined(SERIALIZE_LITTLEENDIAN)
 
 template <typename T>
 inline T EndianSwap(T t)
@@ -186,11 +186,11 @@ inline T EndianSwap(T t)
 #define DESERIALIZE_ME_BYTESWAP32 __builtin_bswap32
 #define DESERIALIZE_ME_BYTESWAP64 __builtin_bswap64
 #endif
-  if constexpr (sizeof(T) == 1)
-  {   // Compile-time if-then's.
+  if constexpr(sizeof(T) == 1)
+  {  // Compile-time if-then's.
     return t;
   }
-  else if constexpr (sizeof(T) == 2)
+  else if constexpr(sizeof(T) == 2)
   {
     union
     {
@@ -201,7 +201,7 @@ inline T EndianSwap(T t)
     u.i = DESERIALIZE_ME_BYTESWAP16(u.i);
     return u.t;
   }
-  else if constexpr (sizeof(T) == 4)
+  else if constexpr(sizeof(T) == 4)
   {
     union
     {
@@ -212,7 +212,7 @@ inline T EndianSwap(T t)
     u.i = DESERIALIZE_ME_BYTESWAP32(u.i);
     return u.t;
   }
-  else if (sizeof(T) == 8)
+  else if(sizeof(T) == 8)
   {
     union
     {
@@ -229,21 +229,26 @@ inline T EndianSwap(T t)
   }
 }
 
-template <class Type>
-struct TypeDefinition
-{
-  std::string typeName() const;
-  template <class Function>
-  void typeDef(const Type& obj, Function& addField);
-};
+// Check if a Function like this is implemented:
+//
+// template <typename Func> std::string_view TypeDefinition(T&, Func&);
 
 template <typename T, class = void>
-struct is_serializer_specialized : std::false_type
+struct has_TypeDefinition : std::false_type
 {
 };
 
+const auto EmptyFuncion = [](const char*, void*) {};
+using EmptyFunc = decltype(EmptyFuncion);
+
+template <typename T1, typename T2>
+using enable_if_same_t = std::enable_if_t<std::is_same_v<T1, T2>>;
+
 template <typename T>
-struct is_serializer_specialized<T, decltype(TypeDefinition<T>(), void())>
+struct has_TypeDefinition<
+    T, enable_if_same_t<std::string_view,
+                        decltype(TypeDefinition(std::declval<T&>(),
+                                                std::declval<EmptyFunc&>()))>>
   : std::true_type
 {
 };
@@ -312,7 +317,9 @@ inline constexpr bool is_vector()
 template <typename T>
 inline size_t BufferSize(const T& val)
 {
-  if constexpr (is_number<T>())
+  static_assert(is_number<T>() || has_TypeDefinition<T>(), "Missing TypeDefinition");
+
+  if constexpr(is_number<T>())
   {
     return sizeof(T);
   }
@@ -323,7 +330,7 @@ inline size_t BufferSize(const T& val)
       total_size += BufferSize(*field);
     };
 
-    TypeDefinition<T>().typeDef(val, func);
+    TypeDefinition(const_cast<T&>(val), func);
     return total_size;
   }
 }
@@ -343,14 +350,14 @@ inline size_t BufferSize(const std::array<T, N>&)
 template <template <class, class> class Container, class T, class... TArgs>
 inline size_t BufferSize(const Container<T, TArgs...>& vect)
 {
-  if constexpr (std::is_trivially_copyable_v<T> && is_vector<Container<T, TArgs...>>())
+  if constexpr(std::is_trivially_copyable_v<T> && is_vector<Container<T, TArgs...>>())
   {
     return sizeof(uint32_t) + vect.size() * sizeof(T);
   }
   else
   {
     auto size = sizeof(uint32_t);
-    for (const auto& v : vect)
+    for(const auto& v : vect)
     {
       size += BufferSize(v);
     }
@@ -365,10 +372,12 @@ inline size_t BufferSize(const Container<T, TArgs...>& vect)
 template <typename T>
 inline void DeserializeFromBuffer(SpanBytesConst& buffer, T& dest)
 {
-  if constexpr (std::is_arithmetic_v<T> || std::is_same_v<T, std::byte>)
+  static_assert(is_number<T>() || has_TypeDefinition<T>(), "Missing TypeDefinition");
+
+  if constexpr(is_number<T>())
   {
     auto const S = sizeof(T);
-    if (S > buffer.size())
+    if(S > buffer.size())
     {
       throw std::runtime_error("DeserializeFromBuffer: buffer overflow");
     }
@@ -377,14 +386,14 @@ inline void DeserializeFromBuffer(SpanBytesConst& buffer, T& dest)
 #if SERIALIZE_LITTLEENDIAN == 0
     dest = EndianSwap<T>(dest);
 #endif
-    buffer = SpanBytesConst(buffer.data() + S, buffer.size() - S);   // NOLINT
+    buffer = SpanBytesConst(buffer.data() + S, buffer.size() - S);  // NOLINT
   }
   else
   {
     auto func = [&buffer](const char*, const auto* field) {
       DeserializeFromBuffer(buffer, *field);
     };
-    TypeDefinition<T>().typeDef(dest, func);
+    TypeDefinition(dest, func);
   }
 }
 
@@ -394,7 +403,7 @@ inline void DeserializeFromBuffer(SpanBytesConst& buffer, std::string& dest)
   StringSize size = 0;
   DeserializeFromBuffer(buffer, size);
 
-  if (size > buffer.size())
+  if(size > buffer.size())
   {
     throw std::runtime_error("DeserializeFromBuffer: buffer overflow");
   }
@@ -406,19 +415,19 @@ inline void DeserializeFromBuffer(SpanBytesConst& buffer, std::string& dest)
 template <typename T, size_t N>
 inline void DeserializeFromBuffer(SpanBytesConst& buffer, std::array<T, N>& dest)
 {
-  if (N * BufferSize(T{}) > buffer.size())
+  if(N * BufferSize(T{}) > buffer.size())
   {
     throw std::runtime_error("DeserializeFromBuffer: buffer overflow");
   }
 
-  if constexpr (sizeof(T) == 1)
+  if constexpr(sizeof(T) == 1)
   {
     memcpy(dest.data(), buffer.data(), N);
     buffer.trimFront(N);
   }
   else
   {
-    for (size_t i = 0; i < N; i++)
+    for(size_t i = 0; i < N; i++)
     {
       DeserializeFromBuffer(buffer, dest[i]);
     }
@@ -432,15 +441,15 @@ inline void DeserializeFromBuffer(SpanBytesConst& buffer, Container<T, TArgs...>
   DeserializeFromBuffer(buffer, num_values);
 
   // if the container offers contiguous memory, you can just use memcpy
-  if constexpr (sizeof(T) == 1 && is_vector<Container<T, TArgs...>>())
+  if constexpr(sizeof(T) == 1 && is_vector<Container<T, TArgs...>>())
   {
-    if constexpr (container_info<Container<T, TArgs...>>::size == 0)
+    if constexpr(container_info<Container<T, TArgs...>>::size == 0)
     {
       dest.resize(num_values);
     }
-    else if constexpr (std::is_array_v<Container<T, TArgs...>>)
+    else if constexpr(std::is_array_v<Container<T, TArgs...>>)
     {
-      if (std::size(dest) != num_values)
+      if(std::size(dest) != num_values)
       {
         throw std::runtime_error("DeserializeFromBuffer: wrong size in static container");
       }
@@ -453,7 +462,7 @@ inline void DeserializeFromBuffer(SpanBytesConst& buffer, Container<T, TArgs...>
   else
   {
     dest.clear();
-    for (size_t i = 0; i < num_values; i++)
+    for(size_t i = 0; i < num_values; i++)
     {
       T temp;
       DeserializeFromBuffer(buffer, temp);
@@ -469,10 +478,12 @@ inline void DeserializeFromBuffer(SpanBytesConst& buffer, Container<T, TArgs...>
 template <typename T>
 inline void SerializeIntoBuffer(SpanBytes& buffer, T const& value)
 {
-  if constexpr (is_number<T>())
+  static_assert(is_number<T>() || has_TypeDefinition<T>(), "Missing TypeDefinition");
+
+  if constexpr(is_number<T>())
   {
     const size_t S = sizeof(T);
-    if (S > buffer.size())
+    if(S > buffer.size())
     {
       throw std::runtime_error("SerializeIntoBuffer: buffer overflow");
     }
@@ -481,26 +492,26 @@ inline void SerializeIntoBuffer(SpanBytes& buffer, T const& value)
 #else
     *(reinterpret_cast<T*>(buffer.data())) = value;
 #endif
-    buffer.trimFront(S);   // NOLINT
+    buffer.trimFront(S);  // NOLINT
   }
   else
   {
     auto func = [&buffer](const char*, const auto* field) {
       SerializeIntoBuffer(buffer, *field);
     };
-    TypeDefinition<T>().typeDef(value, func);
+    TypeDefinition(const_cast<T&>(value), func);
   }
 }
 
 template <>
 inline void SerializeIntoBuffer(SpanBytes& buffer, std::string const& str)
 {
-  if (str.size() > std::numeric_limits<StringSize>::max())
+  if(str.size() > std::numeric_limits<StringSize>::max())
   {
     throw std::runtime_error("SerializeIntoBuffer: string exceeds maximum size");
   }
 
-  if ((str.size() + sizeof(StringSize)) > buffer.size())
+  if((str.size() + sizeof(StringSize)) > buffer.size())
   {
     throw std::runtime_error("SerializeIntoBuffer: buffer overflow");
   }
@@ -515,27 +526,27 @@ inline void SerializeIntoBuffer(SpanBytes& buffer, std::string const& str)
 template <typename T, size_t N>
 inline void SerializeIntoBuffer(SpanBytes& buffer, std::array<T, N> const& vect)
 {
-  if (N > std::numeric_limits<uint32_t>::max())
+  if(N > std::numeric_limits<uint32_t>::max())
   {
     throw std::runtime_error("SerializeIntoBuffer: array exceeds maximum size");
   }
 
-  if constexpr (std::is_arithmetic_v<T> || std::is_same_v<T, std::byte>)
+  if constexpr(std::is_arithmetic_v<T> || std::is_same_v<T, std::byte>)
   {
-    if (N * sizeof(T) > buffer.size())
+    if(N * sizeof(T) > buffer.size())
     {
       throw std::runtime_error("SerializeIntoBuffer: buffer overflow");
     }
   }
 
-  if constexpr (sizeof(T) == 1)
+  if constexpr(sizeof(T) == 1)
   {
     std::memcpy(vect.data(), buffer.data(), N);
     buffer.trimFront(N);
   }
   else
   {
-    for (size_t i = 0; i < N; i++)
+    for(size_t i = 0; i < N; i++)
     {
       SerializeIntoBuffer(buffer, vect[i]);
     }
@@ -549,10 +560,10 @@ inline void SerializeIntoBuffer(SpanBytes& buffer, Container<T, TArgs...> const&
   SerializeIntoBuffer(buffer, num_values);
 
   // can use memcpy if the size of T is 1
-  if constexpr (sizeof(T) == 1 && is_vector<Container<T, TArgs...>>())
+  if constexpr(sizeof(T) == 1 && is_vector<Container<T, TArgs...>>())
   {
     const size_t size = num_values;
-    if (size > buffer.size())
+    if(size > buffer.size())
     {
       throw std::runtime_error("SerializeIntoBuffer: buffer overflow");
     }
@@ -561,11 +572,11 @@ inline void SerializeIntoBuffer(SpanBytes& buffer, Container<T, TArgs...> const&
   }
   else
   {
-    for (const T& v : vect)
+    for(const T& v : vect)
     {
       SerializeIntoBuffer(buffer, v);
     }
   }
 }
 
-}   // namespace SerializeMe
+}  // namespace SerializeMe
