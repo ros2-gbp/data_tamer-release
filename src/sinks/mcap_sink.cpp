@@ -1,8 +1,10 @@
 #include "data_tamer/sinks/mcap_sink.hpp"
 #include "data_tamer/contrib/SerializeMe.hpp"
 
+#include <chrono>
 #include <sstream>
 #include <mutex>
+#include <string>
 
 #ifndef USING_ROS2
 #define MCAP_IMPLEMENTATION
@@ -24,7 +26,7 @@ void SerializeIntoBuffer(SpanBytes& buffer,
   std::memcpy(buffer.data(), value.data(), value.size());
   buffer.trimFront(value.size());
 }
-}   // end namespace SerializeMe
+}  // end namespace SerializeMe
 
 #endif
 
@@ -33,8 +35,8 @@ namespace DataTamer
 
 static constexpr char const* kDataTamer = "data_tamer";
 
-MCAPSink::MCAPSink(const std::string& filepath, bool do_compression) :
-  filepath_(filepath), compression_(do_compression)
+MCAPSink::MCAPSink(const std::string& filepath, bool do_compression)
+  : filepath_(filepath), compression_(do_compression), original_filepath_(filepath)
 {
   openFile(filepath_);
 }
@@ -46,7 +48,7 @@ void DataTamer::MCAPSink::openFile(std::string const& filepath)
   mcap::McapWriterOptions options(kDataTamer);
   options.compression = compression_ ? mcap::Compression::Zstd : mcap::Compression::None;
   auto status = writer_->open(filepath, options);
-  if (!status.ok())
+  if(!status.ok())
   {
     throw std::runtime_error("Failed to open MCAP file for writing");
   }
@@ -66,7 +68,7 @@ void MCAPSink::addChannel(std::string const& channel_name, Schema const& schema)
   std::scoped_lock lk(mutex_);
   schemas_[channel_name] = schema;
   auto it = hash_to_channel_id_.find(schema.hash);
-  if (it != hash_to_channel_id_.end())
+  if(it != hash_to_channel_id_.end())
   {
     return;
   }
@@ -90,7 +92,7 @@ void MCAPSink::addChannel(std::string const& channel_name, Schema const& schema)
 bool MCAPSink::storeSnapshot(const Snapshot& snapshot)
 {
   std::scoped_lock lk(mutex_);
-  if (forced_stop_recording_)
+  if(forced_stop_recording_)
   {
     return false;
   }
@@ -107,20 +109,26 @@ bool MCAPSink::storeSnapshot(const Snapshot& snapshot)
   // Write our message
   mcap::Message msg;
   msg.channelId = hash_to_channel_id_.at(snapshot.schema_hash);
-  msg.sequence = 1;   // Optional
+  msg.sequence = 1;  // Optional
   // Timestamp requires nanosecond
   msg.logTime = mcap::Timestamp(snapshot.timestamp.count());
   msg.publishTime = msg.logTime;
-  msg.data = reinterpret_cast<std::byte const*>(merged_payload.data());   // NOLINT
+  msg.data = reinterpret_cast<std::byte const*>(merged_payload.data());  // NOLINT
   msg.dataSize = merged_payload.size();
   auto status = writer_->write(msg);
 
   // If reset_time_ is exceeded, we want to overwrite the current file.
   // Better than filling the disk, if you forgot to stop the application.
   auto const now = std::chrono::system_clock::now();
-  if (now - start_time_ > reset_time_)
+  if(reset_time_ != std::chrono::seconds(0) && now - start_time_ > reset_time_)
   {
-    restartRecording(filepath_, compression_);
+    if(create_file_on_reset_)
+    {
+      // change the current filepath to the original with "_[# resets]"" appended
+      filepath_ = original_filepath_ + "_" + std::to_string(file_reset_counter_);
+      ++file_reset_counter_;
+    }
+    restartRecordingImpl(filepath_, compression_, false);
   }
   return true;
 }
@@ -128,6 +136,11 @@ bool MCAPSink::storeSnapshot(const Snapshot& snapshot)
 void MCAPSink::setMaxTimeBeforeReset(std::chrono::seconds reset_time)
 {
   reset_time_ = reset_time;
+}
+
+void MCAPSink::setCreateNewFileOnReset(bool create_file_on_reset)
+{
+  create_file_on_reset_ = create_file_on_reset;
 }
 
 void MCAPSink::stopRecording()
@@ -140,16 +153,28 @@ void MCAPSink::stopRecording()
 
 void MCAPSink::restartRecording(const std::string& filepath, bool do_compression)
 {
+  restartRecordingImpl(filepath, do_compression, true);
+}
+
+void MCAPSink::restartRecordingImpl(const std::string& filepath, bool do_compression,
+                                    bool new_file)
+{
   std::scoped_lock lk(mutex_);
+  if(new_file)
+  {
+    // if this was called by a user, we need to change the filepath that we will increment when reset
+    file_reset_counter_ = 1;
+    original_filepath_ = filepath;
+  }
   filepath_ = filepath;
   compression_ = do_compression;
   openFile(filepath_);
 
   // rebuild the channels
-  for (auto const& [name, schema] : schemas_)
+  for(auto const& [name, schema] : schemas_)
   {
     addChannel(name, schema);
   }
 }
 
-}   // namespace DataTamer
+}  // namespace DataTamer
