@@ -1,13 +1,15 @@
 #pragma once
 
 #include "data_tamer/data_sink.hpp"
-#include "data_tamer/details/mutex.hpp"
 
-#include <unordered_map>
 #include <mutex>
+#include <unordered_map>
+#include <shared_mutex>
 
 namespace DataTamer
 {
+
+using Mutex = std::shared_mutex;
 
 /**
  * @brief The DummySink does nothing, only counting the number of snapshots received.
@@ -38,7 +40,7 @@ public:
     latest_snapshot = snapshot;
 
     auto it = snapshots_count.find(snapshot.schema_hash);
-    if (it != snapshots_count.end())
+    if(it != snapshots_count.end())
     {
       it->second++;
     }
@@ -46,4 +48,4 @@ public:
   }
 };
 
-}   // namespace DataTamer
+}  // namespace DataTamer

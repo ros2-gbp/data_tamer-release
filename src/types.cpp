@@ -31,7 +31,7 @@ BasicType FromStr(const std::string& str)
 {
   static const auto kMap = []() {
     std::unordered_map<std::string, BasicType> map;
-    for (size_t i = 0; i < TypesCount; i++)
+    for(size_t i = 0; i < TypesCount; i++)
     {
       auto type = static_cast<BasicType>(i);
       map[ToStr(type)] = type;
@@ -97,7 +97,7 @@ uint64_t AddFieldToHash(const TypeField& field, uint64_t hash)
 {
   // https://stackoverflow.com/questions/2590677/how-do-i-combine-hash-values-in-c0x
   const std::hash<std::string> str_hasher;
-  const std::hash<BasicType> type_hasher;
+  const std::hash<uint8_t> type_hasher;
   const std::hash<bool> bool_hasher;
   const std::hash<uint32_t> uint_hasher;
 
@@ -106,8 +106,8 @@ uint64_t AddFieldToHash(const TypeField& field, uint64_t hash)
   };
 
   combine(str_hasher, field.field_name);
-  combine(type_hasher, field.type);
-  if (field.type == BasicType::OTHER)
+  combine(type_hasher, static_cast<uint8_t>(field.type));
+  if(field.type == BasicType::OTHER)
   {
     combine(str_hasher, field.type_name);
   }
@@ -118,7 +118,7 @@ uint64_t AddFieldToHash(const TypeField& field, uint64_t hash)
 
 std::ostream& operator<<(std::ostream& os, const TypeField& field)
 {
-  if (field.type == BasicType::OTHER)
+  if(field.type == BasicType::OTHER)
   {
     os << field.type_name;
   }
@@ -127,11 +127,11 @@ std::ostream& operator<<(std::ostream& os, const TypeField& field)
     os << ToStr(field.type);
   }
 
-  if (field.is_vector && field.array_size != 0)
+  if(field.is_vector && field.array_size != 0)
   {
     os << "[" << field.array_size << "]";
   }
-  if (field.is_vector && field.array_size == 0)
+  if(field.is_vector && field.array_size == 0)
   {
     os << "[]";
   }
@@ -146,21 +146,21 @@ std::ostream& operator<<(std::ostream& os, const Schema& schema)
   os << "### channel_name: " << schema.channel_name << "\n\n";
 
   //  std::map<std::string, CustomSerializer::Ptr> custom_types;
-  for (const auto& field : schema.fields)
+  for(const auto& field : schema.fields)
   {
     os << field << "\n";
   }
 
-  for (const auto& [type_name, custom_fields] : schema.custom_types)
+  for(const auto& [type_name, custom_fields] : schema.custom_types)
   {
     os << "===========================================================\n"
        << "MSG: " << type_name << "\n";
-    for (const auto& field : custom_fields)
+    for(const auto& field : custom_fields)
     {
       os << field << "\n";
     }
   }
-  for (const auto& [type_name, custom_schema] : schema.custom_schemas)
+  for(const auto& [type_name, custom_schema] : schema.custom_schemas)
   {
     os << "===========================================================\n"
        << "MSG: " << type_name << "\n"
@@ -190,4 +190,4 @@ std::string ToStr(const Schema& schema)
   return ss.str();
 }
 
-}   // namespace DataTamer
+}  // namespace DataTamer
