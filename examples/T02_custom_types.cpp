@@ -11,8 +11,14 @@
 
 #include "geometry_types.hpp"
 
+struct Bar
+{
+  int a;
+};
+
 int main()
 {
+  using namespace TestTypes;
   using namespace DataTamer;
 
   auto dummy_sink = std::make_shared<DummySink>();
@@ -35,10 +41,11 @@ int main()
 
   // Note has the size of the message is almost the same as the raw data.
   // The only overhead is the size of points_vect
-  size_t expected_size = sizeof(double) * 3 +                            // point
-                         sizeof(double) * 7 +                            // pose
-                         sizeof(uint32_t) + 5 * (sizeof(double) * 3) +   // points_vect and its size
-                         sizeof(int32_t) * 3;                            // value_array
+  size_t expected_size = sizeof(double) * 3 +  // point
+                         sizeof(double) * 7 +  // pose
+                         sizeof(uint32_t) +
+                         5 * (sizeof(double) * 3) +  // points_vect and its size
+                         sizeof(int32_t) * 3;        // value_array
 
   channel->takeSnapshot();
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
