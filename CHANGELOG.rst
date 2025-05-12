@@ -2,6 +2,21 @@
 Changelog for package data_tamer_msgs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.0.2 (2025-05-12)
+-----------
+* Merge pull request `#49 <https://github.com/PickNikRobotics/data_tamer/issues/49>`_ from PickNikRobotics/fix_gtest_link
+  Get gtest from vendor on ROS
+* add myself to maintainer list, add package xml scheme
+* Contributors: Henry Moore
+
+1.0.1 (2025-03-03)
+------------------
+
+1.0.0 (2024-04-30)
+------------------
+* new clang format
+* Contributors: Davide Faconti
+
 0.9.4 (2024-02-02)
 ------------------
 
