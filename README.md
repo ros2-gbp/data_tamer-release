@@ -1,3 +1,28 @@
+## data_tamer (kilted) - 1.0.3-1
+
+The packages in the `data_tamer` repository were released into the `kilted` distro by running `/usr/bin/bloom-release --rosdistro kilted data_tamer` on `Fri, 23 May 2025 19:29:15 -0000`
+
+These packages were released:
+- `data_tamer_cpp`
+- `data_tamer_msgs`
+
+Version of package(s) in repository `data_tamer`:
+
+- upstream repository: https://github.com/PickNikRobotics/data_tamer.git
+- release repository: https://github.com/ros2-gbp/data_tamer-release.git
+- rosdistro version: `1.0.2-1`
+- old version: `1.0.2-1`
+- new version: `1.0.3-1`
+
+Versions of tools used:
+
+- bloom version: `0.12.0`
+- catkin_pkg version: `1.0.0`
+- rosdep version: `0.25.1`
+- rosdistro version: `1.0.1`
+- vcstools version: `0.1.42`
+
+
 ## data_tamer (rolling) - 1.0.3-1
 
 The packages in the `data_tamer` repository were released into the `rolling` distro by running `/usr/bin/bloom-release --rosdistro rolling data_tamer` on `Fri, 23 May 2025 19:27:24 -0000`
