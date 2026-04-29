@@ -1,0 +1,12 @@
+Source: ros-lyrical-data-tamer-cpp
+Section: misc
+Priority: optional
+Maintainer: Davide Faconti <davide.faconti@gmail.com>
+Build-Depends: debhelper (>= 9.0.0), ros-lyrical-ament-cmake, ros-lyrical-ament-cmake-gtest, ros-lyrical-data-tamer-msgs, ros-lyrical-gtest-vendor, ros-lyrical-mcap-vendor, ros-lyrical-rclcpp, ros-lyrical-rclcpp-lifecycle, ros-lyrical-ros-workspace
+Homepage: https://index.ros.org/p/data_tamer_cpp/#lyrical
+Standards-Version: 3.9.2
+
+Package: ros-lyrical-data-tamer-cpp
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ros-lyrical-ament-cmake-gtest, ros-lyrical-data-tamer-msgs, ros-lyrical-gtest-vendor, ros-lyrical-mcap-vendor, ros-lyrical-rclcpp, ros-lyrical-rclcpp-lifecycle, ros-lyrical-ros-workspace
+Description: DataTamer data logging library
